@@ -134,10 +134,11 @@ class HailoDetector:
     def _postprocess(self, raw_output, orig_w, orig_h):
         """Parse Hailo NMS output into detection list.
 
-        Actual output shape from yolov8s_h8.hef: (1, 80, 5, 100)
+        Runtime output shape from yolov8s_h8.hef: (1, 80, N, 5)
+            - batch=1
             - 80 COCO classes
+            - N = number of detections for that class (variable, 0 if none)
             - 5 values per detection: y1, x1, y2, x2, confidence (normalized 0-1)
-            - Up to 100 detections per class
         Class-agnostic: we return ALL detections regardless of class.
         """
         detections = []
@@ -145,27 +146,24 @@ class HailoDetector:
         for name, tensor in raw_output.items():
             data = np.array(tensor)
 
-            # Expected shape: (1, 80, 5, 100) — batch, classes, values, max_dets
+            # Remove batch dim: (1, 80, N, 5) → (80, N, 5)
             if data.ndim == 4:
-                data = data[0]  # remove batch dim → (80, 5, 100)
+                data = data[0]
             elif data.ndim == 3:
-                pass  # already (80, 5, 100)
+                pass
             else:
-                print(f"[detector] Unexpected output shape: {data.shape}")
                 continue
 
+            # data shape: (num_classes, num_detections, 5)
             num_classes = data.shape[0]
-            num_coords = data.shape[1]
-            max_dets = data.shape[2]
+            num_dets = data.shape[1]  # 0 if no detections
+
+            if num_dets == 0:
+                continue
 
             for cls_id in range(num_classes):
-                for det_idx in range(max_dets):
-                    values = data[cls_id, :, det_idx]
-
-                    if num_coords >= 5:
-                        y1_n, x1_n, y2_n, x2_n, conf = values[:5]
-                    else:
-                        continue
+                for det_idx in range(num_dets):
+                    y1_n, x1_n, y2_n, x2_n, conf = data[cls_id, det_idx, :5]
 
                     if conf < self.conf_threshold:
                         continue
