@@ -1,0 +1,54 @@
+camera:
+  index: 0
+  width: 1536
+  height: 864
+  # For lower-res higher-fps fallback:
+  # width: 1280
+  # height: 720
+
+tracker:
+  type: "CSRT"           # CSRT or KCF
+  confidence_threshold: 0.5
+  max_frames_lost: 15    # frames before triggering YOLO fallback
+  # CSRT considers track lost if bbox area changes by this ratio
+  area_change_ratio: 3.0
+  aspect_change_ratio: 2.0
+
+detector:
+  hef_path: "/usr/share/hailo-models/yolov8s_h8.hef"
+  confidence_threshold: 0.3
+  input_width: 640
+  input_height: 640
+  nms_threshold: 0.45
+
+recovery:
+  max_centroid_distance: 200  # pixels - max distance to consider a match
+  aspect_ratio_tolerance: 0.5 # ratio difference tolerance
+  max_recovery_frames: 90     # give up after this many frames in TRACK_LOST
+
+pid:
+  x:
+    kp: 0.5
+    ki: 0.01
+    kd: 0.1
+  y:
+    kp: 0.5
+    ki: 0.01
+    kd: 0.1
+  z:
+    kp: 0.3
+    ki: 0.0
+    kd: 0.05
+
+servo:
+  deadband: 0.02          # no command if error < 2% of frame
+  max_velocity: 1.0       # m/s max horizontal velocity command
+  descent_rate: -0.5      # m/s vertical velocity during terminal
+  frame_center_x: 0.5     # normalized
+  frame_center_y: 0.5
+
+mavlink:
+  port: "/dev/ttyACM0"
+  baud: 115200
+  system_id: 1
+  component_id: 1

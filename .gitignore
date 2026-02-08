@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+*.hef
+!striker/models/*.hef
+.env
+*.log
+data/test_videos/
+.vscode/
+.idea/
+*.Zone.Identifier
