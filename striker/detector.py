@@ -108,88 +108,81 @@ class HailoDetector:
         output_params = OutputVStreamParams.make(self._network_group)
 
         with InferVStreams(self._network_group, input_params, output_params) as pipeline:
-            while self._running:
-                try:
-                    frame, orig_w, orig_h = self._input_queue.get(timeout=0.1)
-                except queue.Empty:
-                    continue
+            # Activate the network group for inference
+            with self._network_group.activate():
+                while self._running:
+                    try:
+                        frame, orig_w, orig_h = self._input_queue.get(timeout=0.1)
+                    except queue.Empty:
+                        continue
 
-                input_data = self._preprocess(frame)
+                    input_data = self._preprocess(frame)
 
-                input_dict = {
-                    self._input_vstream_info[0].name: input_data
-                }
-                raw_output = pipeline.infer(input_dict)
+                    input_dict = {
+                        self._input_vstream_info[0].name: input_data
+                    }
+                    raw_output = pipeline.infer(input_dict)
 
-                detections = self._postprocess(raw_output, orig_w, orig_h)
+                    detections = self._postprocess(raw_output, orig_w, orig_h)
 
-                try:
-                    self._output_queue.get_nowait()
-                except queue.Empty:
-                    pass
-                self._output_queue.put(detections)
+                    try:
+                        self._output_queue.get_nowait()
+                    except queue.Empty:
+                        pass
+                    self._output_queue.put(detections)
 
     def _postprocess(self, raw_output, orig_w, orig_h):
         """Parse Hailo NMS output into detection list.
 
-        YOLOv8s with built-in NMS outputs a tensor of shape
-        [1, num_detections, 6] where each detection is:
-        [y1_norm, x1_norm, y2_norm, x2_norm, confidence, class_id]
-
-        The exact format depends on the HEF compilation. We handle
-        the common Hailo NMS output format.
+        Actual output shape from yolov8s_h8.hef: (1, 80, 5, 100)
+            - 80 COCO classes
+            - 5 values per detection: y1, x1, y2, x2, confidence (normalized 0-1)
+            - Up to 100 detections per class
+        Class-agnostic: we return ALL detections regardless of class.
         """
         detections = []
 
         for name, tensor in raw_output.items():
             data = np.array(tensor)
 
-            # Hailo NMS output: may be list of arrays per class or flat array
-            if data.ndim == 1 and data.size == 0:
-                continue
-
-            # Flatten if needed — handle various Hailo output shapes
-            if data.ndim == 3:
-                # Shape: [1, N, 6] — standard NMS
-                data = data.reshape(-1, data.shape[-1])
-            elif data.ndim == 2:
-                pass  # already [N, cols]
-            elif data.ndim == 1:
-                if data.size % 6 == 0:
-                    data = data.reshape(-1, 6)
-                else:
-                    continue
+            # Expected shape: (1, 80, 5, 100) — batch, classes, values, max_dets
+            if data.ndim == 4:
+                data = data[0]  # remove batch dim → (80, 5, 100)
+            elif data.ndim == 3:
+                pass  # already (80, 5, 100)
             else:
+                print(f"[detector] Unexpected output shape: {data.shape}")
                 continue
 
-            if data.shape[0] == 0:
-                continue
+            num_classes = data.shape[0]
+            num_coords = data.shape[1]
+            max_dets = data.shape[2]
 
-            for det in data:
-                if len(det) < 5:
-                    continue
+            for cls_id in range(num_classes):
+                for det_idx in range(max_dets):
+                    values = data[cls_id, :, det_idx]
 
-                # Try standard format: [y1, x1, y2, x2, confidence, class_id]
-                if len(det) >= 6:
-                    y1_n, x1_n, y2_n, x2_n, conf, cls_id = det[:6]
-                else:
-                    y1_n, x1_n, y2_n, x2_n, conf = det[:5]
-                    cls_id = 0
+                    if num_coords >= 5:
+                        y1_n, x1_n, y2_n, x2_n, conf = values[:5]
+                    else:
+                        continue
 
-                if conf < self.conf_threshold:
-                    continue
+                    if conf < self.conf_threshold:
+                        continue
 
-                # Scale to original frame coordinates
-                x1 = int(x1_n * orig_w)
-                y1 = int(y1_n * orig_h)
-                x2 = int(x2_n * orig_w)
-                y2 = int(y2_n * orig_h)
-                w = x2 - x1
-                h = y2 - y1
+                    # Scale normalized coords to original frame
+                    x1 = int(x1_n * orig_w)
+                    y1 = int(y1_n * orig_h)
+                    x2 = int(x2_n * orig_w)
+                    y2 = int(y2_n * orig_h)
+                    w = x2 - x1
+                    h = y2 - y1
 
-                if w > 0 and h > 0:
-                    detections.append((int(cls_id), float(conf), x1, y1, w, h))
+                    if w > 0 and h > 0:
+                        detections.append((cls_id, float(conf), x1, y1, w, h))
 
+        # Sort by confidence descending
+        detections.sort(key=lambda d: d[1], reverse=True)
         return detections
 
     def _stub_loop(self):
