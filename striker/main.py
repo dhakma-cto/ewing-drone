@@ -217,38 +217,25 @@ def main():
                         print("[main] >>> MANUAL MODE — AI disengaged")
                     prev_mode_pos = mode_pos
 
-                # State switch (only in AI mode, edge-triggered)
+                # State switch (only in AI mode)
+                # UP=select, MID=armed, DOWN=terminal
                 if ai_mode and state_pos != prev_state_pos:
                     if state_pos == 0:
-                        # UP: Always reset
-                        state = IDLE
-                        tracker.reset()
-                        servo.reset()
-                        roi_selector.deactivate()
-                        current_bbox = None
-                        current_confidence = 0.0
-                        recovery_frames = 0
-                        cmd_str = ""
-                        print("[main] [SG] Reset → IDLE")
-                    elif state_pos == 1 and prev_state_pos == 0:
-                        # UP → MID: Start target selection
-                        if state == IDLE:
-                            roi_selector.activate()
-                            state = TARGET_SELECT
-                            print("[main] [SG] Select target")
-                    elif state_pos == 2:
-                        # Any → DOWN: Advance to next state
+                        # UP: Target select mode
+                        roi_selector.activate()
+                        state = TARGET_SELECT
+                        print("[main] [SG] TARGET SELECT")
+                    elif state_pos == 1:
+                        # MID: Confirm ROI + arm
                         if state == TARGET_SELECT:
                             roi_selector._confirm()
                             print(f"[main] [SG] ROI confirmed: {roi_selector.bbox}")
-                            # confirmed flag picked up by state machine below
-                        elif state == TRACKING:
-                            state = STRIKE_ARMED
-                            print("[main] [SG] STRIKE ARMED")
-                        elif state == STRIKE_ARMED:
-                            state = TERMINAL
-                            print("[main] [SG] STRIKE EXECUTE → TERMINAL")
-                    # MID from DOWN: no-op (allows re-flip to DOWN)
+                        state = STRIKE_ARMED
+                        print("[main] [SG] STRIKE ARMED")
+                    elif state_pos == 2:
+                        # DOWN: Terminal / execute
+                        state = TERMINAL
+                        print("[main] [SG] TERMINAL")
                     prev_state_pos = state_pos
 
             # --- State machine ---
