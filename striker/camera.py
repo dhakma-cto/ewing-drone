@@ -1,5 +1,6 @@
 """picamera2 capture wrapper for Pi Camera Module 3."""
 
+import time
 import numpy as np
 
 try:
@@ -16,6 +17,8 @@ class CameraStream:
         self.height = height
         self.camera_index = camera_index
         self._cam = None
+        self._last_retry = 0
+        self._retry_interval = 3.0  # seconds between retries
 
     def start(self):
         if Picamera2 is None:
@@ -41,7 +44,10 @@ class CameraStream:
     def read(self):
         """Return a BGR numpy array frame, or None on failure."""
         if self._cam is None:
-            self._try_connect()
+            now = time.monotonic()
+            if now - self._last_retry >= self._retry_interval:
+                self._last_retry = now
+                self._try_connect()
         if self._cam is None:
             # Black frame with "NO CAMERA" text
             frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
