@@ -1,0 +1,19 @@
+[Unit]
+Description=STRIKER EDGE AI
+After=graphical.target
+Wants=graphical.target
+
+[Service]
+Type=simple
+User=mackie
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/mackie/.Xauthority
+WorkingDirectory=/home/mackie/ewing-drone
+ExecStart=/usr/bin/python3 striker/main.py
+Restart=on-failure
+RestartSec=3
+StandardOutput=append:/home/mackie/striker.log
+StandardError=append:/home/mackie/striker.log
+
+[Install]
+WantedBy=graphical.target
