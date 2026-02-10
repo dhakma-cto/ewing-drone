@@ -7,6 +7,8 @@ Wants=graphical.target
 Type=simple
 User=mackie
 Environment=DISPLAY=:0
+Environment=WAYLAND_DISPLAY=wayland-1
+Environment=XDG_RUNTIME_DIR=/run/user/1000
 Environment=XAUTHORITY=/home/mackie/.Xauthority
 WorkingDirectory=/home/mackie/ewing-drone
 ExecStart=/usr/bin/python3 striker/main.py

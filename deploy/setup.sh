@@ -77,12 +77,8 @@ systemctl daemon-reload
 systemctl enable striker.service
 echo "  Service installed and enabled"
 
-# --- 5. Force X11 ---
-echo "[5/6] Setting display server to X11..."
-raspi-config nonint do_wayland W1 2>/dev/null && echo "  X11 set" || echo "  WARNING: could not set X11 — set manually via raspi-config"
-
-# --- 6. Permissions ---
-echo "[6/6] Setting permissions..."
+# --- 5. Permissions ---
+echo "[5/5] Setting permissions..."
 usermod -aG dialout "$USER" 2>/dev/null || true  # serial port access
 usermod -aG video "$USER" 2>/dev/null || true     # camera access
 echo "  User $USER added to dialout + video groups"
