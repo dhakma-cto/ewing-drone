@@ -94,9 +94,9 @@ echo "  NOTE: Composite output disables HDMI — use SSH to manage"
 
 # --- 4. Dependencies ---
 echo "[4/6] Installing Python dependencies..."
-pip3 install --break-system-packages -q pymavlink PyYAML 2>/dev/null || \
-    pip3 install pymavlink PyYAML 2>/dev/null || \
-    echo "  WARNING: pip install failed — pymavlink/PyYAML may need manual install"
+pip3 install --break-system-packages -q -r "$REPO_DIR/requirements.txt" 2>/dev/null || \
+    pip3 install -r "$REPO_DIR/requirements.txt" 2>/dev/null || \
+    echo "  WARNING: pip install failed — run manually: pip3 install -r requirements.txt"
 echo "  Dependencies checked"
 
 # --- 5. Systemd service ---
