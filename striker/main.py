@@ -218,24 +218,35 @@ def main():
                     prev_mode_pos = mode_pos
 
                 # State switch (only in AI mode)
-                # UP=select, MID=armed, DOWN=terminal
+                # Must follow sequence: select → armed → terminal
                 if ai_mode and state_pos != prev_state_pos:
                     if state_pos == 0:
-                        # UP: Target select mode
+                        # UP: Target select (always allowed in AI mode)
                         roi_selector.activate()
+                        tracker.reset()
+                        servo.reset()
+                        current_bbox = None
+                        current_confidence = 0.0
+                        cmd_str = ""
                         state = TARGET_SELECT
                         print("[main] [SG] TARGET SELECT")
                     elif state_pos == 1:
-                        # MID: Confirm ROI + arm
-                        if state == TARGET_SELECT:
-                            roi_selector._confirm()
-                            print(f"[main] [SG] ROI confirmed: {roi_selector.bbox}")
-                        state = STRIKE_ARMED
-                        print("[main] [SG] STRIKE ARMED")
+                        # MID: Arm (only from TARGET_SELECT or TRACKING)
+                        if state in (TARGET_SELECT, TRACKING):
+                            if state == TARGET_SELECT:
+                                roi_selector._confirm()
+                                print(f"[main] [SG] ROI confirmed: {roi_selector.bbox}")
+                            state = STRIKE_ARMED
+                            print("[main] [SG] STRIKE ARMED")
+                        else:
+                            print(f"[main] [SG] Cannot arm from {state} — select target first")
                     elif state_pos == 2:
-                        # DOWN: Terminal / execute
-                        state = TERMINAL
-                        print("[main] [SG] TERMINAL")
+                        # DOWN: Terminal (only from STRIKE_ARMED)
+                        if state == STRIKE_ARMED:
+                            state = TERMINAL
+                            print("[main] [SG] TERMINAL")
+                        else:
+                            print(f"[main] [SG] Cannot execute from {state} — arm first")
                     prev_state_pos = state_pos
 
             # --- State machine ---
