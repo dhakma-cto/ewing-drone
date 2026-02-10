@@ -193,19 +193,14 @@ def main():
                     prev_mode_pos = mode_pos
                     prev_state_pos = state_pos
                     ai_mode = (mode_pos == 2)
-                    if ai_mode:
-                        print("[main] Started in AI mode")
-                    else:
-                        print("[main] Started in MANUAL mode")
 
                 # Mode switch: down=AI, up/mid=Manual
                 if mode_pos != prev_mode_pos:
                     if mode_pos == 2 and not ai_mode:
                         ai_mode = True
-                        print("[main] >>> AI MODE ENABLED")
+                        cmd_str = "AI MODE"
                     elif mode_pos != 2 and ai_mode:
                         ai_mode = False
-                        # Immediate override — kill everything
                         state = IDLE
                         tracker.reset()
                         servo.reset()
@@ -213,15 +208,13 @@ def main():
                         current_bbox = None
                         current_confidence = 0.0
                         recovery_frames = 0
-                        cmd_str = ""
-                        print("[main] >>> MANUAL MODE — AI disengaged")
+                        cmd_str = "MANUAL MODE"
                     prev_mode_pos = mode_pos
 
                 # State switch (only in AI mode)
                 # Must follow sequence: select → armed → terminal
                 if ai_mode and state_pos != prev_state_pos:
                     if state_pos == 0:
-                        # UP: Target select (always allowed in AI mode)
                         roi_selector.activate()
                         tracker.reset()
                         servo.reset()
@@ -229,24 +222,21 @@ def main():
                         current_confidence = 0.0
                         cmd_str = ""
                         state = TARGET_SELECT
-                        print("[main] [SG] TARGET SELECT")
                     elif state_pos == 1:
-                        # MID: Arm (only from TARGET_SELECT or TRACKING)
                         if state in (TARGET_SELECT, TRACKING):
                             if state == TARGET_SELECT:
                                 roi_selector._confirm()
-                                print(f"[main] [SG] ROI confirmed: {roi_selector.bbox}")
+                                bbox = roi_selector.bbox
+                                tracker.init(frame, bbox)
+                                recovery.store_target(bbox)
+                                current_bbox = bbox
+                                servo.reset()
                             state = STRIKE_ARMED
-                            print("[main] [SG] STRIKE ARMED")
-                        else:
-                            print(f"[main] [SG] Cannot arm from {state} — select target first")
+                            cmd_str = "STRIKE ARMED"
                     elif state_pos == 2:
-                        # DOWN: Terminal (only from STRIKE_ARMED)
                         if state == STRIKE_ARMED:
                             state = TERMINAL
-                            print("[main] [SG] TERMINAL")
-                        else:
-                            print(f"[main] [SG] Cannot execute from {state} — arm first")
+                            cmd_str = "TERMINAL"
                     prev_state_pos = state_pos
 
             # --- State machine ---
@@ -379,6 +369,7 @@ def main():
                 cmd_str=cmd_str,
                 detections=last_detections if state == TRACK_LOST else None,
                 lost_frames=recovery_frames if state == TRACK_LOST else 0,
+                ai_mode=ai_mode,
             )
 
             cv2.imshow(WINDOW_NAME, frame)

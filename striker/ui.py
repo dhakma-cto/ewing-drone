@@ -262,22 +262,18 @@ class OverlayRenderer:
 
     def draw(self, frame, state, bbox=None, confidence=0.0,
              error_x=0.0, error_y=0.0, fps=0.0, cmd_str="",
-             detections=None, lost_frames=0):
-        """Draw full overlay on frame (mutates in place).
-
-        Args:
-            frame: BGR numpy array
-            state: current state string
-            bbox: (x, y, w, h) of tracked target, or None
-            confidence: tracker confidence 0-1
-            error_x, error_y: normalized error -1 to +1
-            fps: current FPS
-            cmd_str: velocity command string for display
-            detections: list of YOLO detections for debug display
-            lost_frames: frames since track was lost
-        """
+             detections=None, lost_frames=0, ai_mode=False):
         h, w = frame.shape[:2]
         cx, cy = w // 2, h // 2
+
+        # Mode indicator — top right
+        mode_text = "AI" if ai_mode else "MANUAL"
+        mode_color = GREEN if ai_mode else RED
+        (mw, mh), _ = cv2.getTextSize(mode_text, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
+        mx = w - mw - 15
+        cv2.rectangle(frame, (mx - 5, 5), (w - 5, mh + 15), (0, 0, 0), -1)
+        cv2.putText(frame, mode_text, (mx, mh + 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, mode_color, 2)
 
         # Crosshair at frame center
         self._draw_crosshair(frame, cx, cy)
