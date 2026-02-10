@@ -67,7 +67,7 @@ rc_input:
   cursor_speed: 8.0   # px/frame at full deflection
   size_speed: 3.0
   throttle_is_size_h: false
-  invert_size_w: true
+  invert_size_w: false
   default_roi_w: 120
   default_roi_h: 120
   min_roi_size: 15
