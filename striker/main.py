@@ -154,7 +154,7 @@ def main():
     mavlink.connect()
 
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(WINDOW_NAME, cam_cfg["width"], cam_cfg["height"])
+    cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     print("[main] Running. Press 'S' to select target, 'Q' to quit.")
 
