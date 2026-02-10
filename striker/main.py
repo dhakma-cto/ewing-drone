@@ -193,6 +193,10 @@ def main():
                     prev_mode_pos = mode_pos
                     prev_state_pos = state_pos
                     ai_mode = (mode_pos == 2)
+                    # If starting in AI mode with state switch at UP, enter select
+                    if ai_mode and state_pos == 0:
+                        roi_selector.activate()
+                        state = TARGET_SELECT
 
                 # Mode switch: down=AI, up/mid=Manual
                 if mode_pos != prev_mode_pos:
