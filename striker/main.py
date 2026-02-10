@@ -22,7 +22,8 @@ from detector import HailoDetector
 from recovery import RecoveryManager
 from servo import VisualServo
 from mavlink_io import MAVLinkInterface
-from ui import TargetSelector, OverlayRenderer
+from rc_input import RCInput
+from ui import TargetSelector, ROISelector, OverlayRenderer
 from utils import FPSCounter
 
 
@@ -63,6 +64,7 @@ def main():
     pid_cfg = cfg["pid"]
     srv_cfg = cfg["servo"]
     mav_cfg = cfg["mavlink"]
+    rc_cfg = cfg.get("rc_input", {})
 
     # --- Initialize modules ---
     # Camera
@@ -112,6 +114,18 @@ def main():
         baud=mav_cfg["baud"],
         stub=True,
     )
+
+    # RC input (skip in --fake mode, graceful failure)
+    rc = RCInput(
+        port=rc_cfg.get("port", "/dev/serial0"),
+        baud=rc_cfg.get("baud", 57600),
+        rate_hz=rc_cfg.get("rate_hz", 10),
+    )
+    if not args.fake and not args.video:
+        rc.start()  # returns False gracefully on failure
+
+    # ROI selector (non-blocking, gets frame size from actual frame on first draw)
+    roi_selector = ROISelector(rc_cfg)
 
     # UI
     overlay = OverlayRenderer()
@@ -164,18 +178,24 @@ def main():
             # --- State machine ---
             if state == IDLE:
                 if key == ord('s'):
+                    roi_selector.activate()
                     state = TARGET_SELECT
+                    print("[main] ROI selection started (WASD/sticks to move, Enter/switch to confirm)")
 
             elif state == TARGET_SELECT:
-                bbox = TargetSelector.select(frame, WINDOW_NAME)
-                if bbox is not None:
+                roi_selector.update_rc(rc)
+                roi_selector.update_keyboard(key)
+                roi_selector.draw(frame)
+
+                if roi_selector.confirmed:
+                    bbox = roi_selector.bbox
                     tracker.init(frame, bbox)
                     recovery.store_target(bbox)
                     current_bbox = bbox
                     servo.reset()
                     state = TRACKING
                     print(f"[main] Target selected: {bbox} → TRACKING")
-                else:
+                elif roi_selector.cancelled:
                     state = IDLE
                     print("[main] Selection cancelled → IDLE")
 
@@ -293,6 +313,7 @@ def main():
         print("\n[main] Interrupted")
     finally:
         print("[main] Shutting down...")
+        rc.stop()
         detector.stop()
         camera.stop()
         mavlink.disconnect()
