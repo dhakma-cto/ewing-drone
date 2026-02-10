@@ -19,21 +19,36 @@ class CameraStream:
 
     def start(self):
         if Picamera2 is None:
-            raise RuntimeError(
-                "picamera2 not installed. Install with: pip install picamera2"
+            print("[camera] picamera2 not installed — waiting for camera")
+            return
+        self._try_connect()
+
+    def _try_connect(self):
+        """Attempt to open the camera. Sets self._cam on success."""
+        try:
+            cam = Picamera2(self.camera_index)
+            config = cam.create_video_configuration(
+                main={"size": (self.width, self.height), "format": "BGR888"},
+                buffer_count=4,
             )
-        self._cam = Picamera2(self.camera_index)
-        config = self._cam.create_video_configuration(
-            main={"size": (self.width, self.height), "format": "BGR888"},
-            buffer_count=4,
-        )
-        self._cam.configure(config)
-        self._cam.start()
+            cam.configure(config)
+            cam.start()
+            self._cam = cam
+            print(f"[camera] Connected (camera {self.camera_index})")
+        except (IndexError, RuntimeError) as e:
+            self._cam = None
 
     def read(self):
         """Return a BGR numpy array frame, or None on failure."""
         if self._cam is None:
-            return None
+            self._try_connect()
+        if self._cam is None:
+            # Black frame with "NO CAMERA" text
+            frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+            import cv2
+            cv2.putText(frame, "NO CAMERA", (self.width // 2 - 150, self.height // 2),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
+            return frame
         return self._cam.capture_array("main")
 
     def stop(self):
