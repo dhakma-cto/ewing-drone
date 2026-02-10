@@ -5,17 +5,17 @@ Wants=graphical.target
 
 [Service]
 Type=simple
-User=mackie
+User=tritium
 Environment=DISPLAY=:0
 Environment=WAYLAND_DISPLAY=wayland-1
 Environment=XDG_RUNTIME_DIR=/run/user/1000
-Environment=XAUTHORITY=/home/mackie/.Xauthority
-WorkingDirectory=/home/mackie/ewing-drone
+Environment=XAUTHORITY=/home/tritium/.Xauthority
+WorkingDirectory=/home/tritium/TerminalAI_Pi
 ExecStart=/usr/bin/python3 striker/main.py
 Restart=on-failure
 RestartSec=3
-StandardOutput=append:/home/mackie/striker.log
-StandardError=append:/home/mackie/striker.log
+StandardOutput=append:/home/tritium/striker.log
+StandardError=append:/home/tritium/striker.log
 
 [Install]
 WantedBy=graphical.target

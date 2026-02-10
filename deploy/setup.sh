@@ -14,7 +14,9 @@ STATIC_IP="${1}"
 GATEWAY="${2:-192.168.1.1}"
 DNS="${3:-8.8.8.8}"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-USER="mackie"
+USER="tritium"
+CONFIG_TXT="/boot/firmware/config.txt"
+CMDLINE_TXT="/boot/firmware/cmdline.txt"
 
 if [ -z "$STATIC_IP" ]; then
     echo "Usage: sudo ./deploy/setup.sh <static-ip> [gateway] [dns]"
@@ -30,7 +32,7 @@ echo "  DNS:     $DNS"
 echo ""
 
 # --- 1. Static IP ---
-echo "[1/5] Setting static IP $STATIC_IP..."
+echo "[1/6] Setting static IP $STATIC_IP..."
 
 # Find active WiFi connection name
 WIFI_CON=$(nmcli -t -f NAME,TYPE con show --active | grep wifi | head -1 | cut -d: -f1)
@@ -58,36 +60,64 @@ else
 fi
 
 # --- 2. SSH ---
-echo "[2/5] Ensuring SSH is enabled..."
+echo "[2/6] Ensuring SSH is enabled..."
 systemctl enable ssh
 systemctl start ssh
 echo "  SSH enabled"
 
-# --- 3. Dependencies ---
-echo "[3/5] Installing Python dependencies..."
+# --- 3. Composite video output ---
+echo "[3/6] Enabling composite video output..."
+
+# config.txt: add ,composite to the vc4-kms-v3d overlay
+if grep -q "dtoverlay=vc4-kms-v3d" "$CONFIG_TXT"; then
+    if grep -q "composite" "$CONFIG_TXT"; then
+        echo "  Composite already enabled in config.txt"
+    else
+        sed -i 's/dtoverlay=vc4-kms-v3d.*/&,composite/' "$CONFIG_TXT"
+        echo "  Added composite to dtoverlay in config.txt"
+    fi
+else
+    echo "dtoverlay=vc4-kms-v3d,composite" >> "$CONFIG_TXT"
+    echo "  Added dtoverlay with composite to config.txt"
+fi
+
+# cmdline.txt: add video mode for composite NTSC
+if grep -q "video=Composite" "$CMDLINE_TXT"; then
+    echo "  Composite video mode already in cmdline.txt"
+else
+    # Append to existing single line (cmdline.txt must be one line)
+    sed -i 's/$/ video=Composite-1:720x480i,tv_mode=NTSC/' "$CMDLINE_TXT"
+    echo "  Added NTSC composite video mode to cmdline.txt"
+fi
+
+echo "  NOTE: Composite output disables HDMI — use SSH to manage"
+
+# --- 4. Dependencies ---
+echo "[4/6] Installing Python dependencies..."
 pip3 install --break-system-packages -q pymavlink PyYAML 2>/dev/null || \
     pip3 install pymavlink PyYAML 2>/dev/null || \
     echo "  WARNING: pip install failed — pymavlink/PyYAML may need manual install"
 echo "  Dependencies checked"
 
-# --- 4. Systemd service ---
-echo "[4/5] Installing striker service..."
+# --- 5. Systemd service ---
+echo "[5/6] Installing striker service..."
 cp "$REPO_DIR/deploy/striker.service" /etc/systemd/system/striker.service
 systemctl daemon-reload
 systemctl enable striker.service
 echo "  Service installed and enabled"
 
-# --- 5. Permissions ---
-echo "[5/5] Setting permissions..."
+# --- 6. Permissions ---
+echo "[6/6] Setting permissions..."
 usermod -aG dialout "$USER" 2>/dev/null || true  # serial port access
 usermod -aG video "$USER" 2>/dev/null || true     # camera access
 echo "  User $USER added to dialout + video groups"
 
 echo ""
 echo "=== Done ==="
-echo "  Static IP: $STATIC_IP (reconnect or reboot to apply)"
-echo "  SSH:       enabled"
-echo "  Service:   striker.service (starts on boot, auto-restarts)"
+echo "  Static IP:  $STATIC_IP (reconnect or reboot to apply)"
+echo "  SSH:        enabled"
+echo "  Composite:  enabled (HDMI disabled)"
+echo "  Service:    striker.service (starts on boot, auto-restarts)"
 echo ""
 echo "  Commands:"
 echo "    sudo systemctl start striker    # start now"
