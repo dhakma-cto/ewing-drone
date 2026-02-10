@@ -59,8 +59,8 @@ rc_input:
   rate_hz: 10
   ch_move_x: 2        # right stick LR
   ch_move_y: 3        # right stick UD
-  ch_size_w: 1        # left stick LR → width
-  ch_size_h: 4        # left stick UD → height (throttle, absolute)
+  ch_size_w: 4        # left stick UD → width
+  ch_size_h: 1        # left stick LR → height
   ch_mode: 5          # AI/Manual mode switch
   ch_state: 7         # SG switch (right, top) — state transitions (edge-triggered)
   stick_deadband: 50
