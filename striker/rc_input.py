@@ -153,6 +153,21 @@ class RCInput:
         raw = self.get_channel(ch)
         return raw > threshold
 
+    def get_switch_3way(self, ch):
+        """Get 3-way switch position: 0 (up/~1000), 1 (mid/~1500), 2 (down/~2000).
+
+        Returns -1 if no data.
+        """
+        raw = self.get_channel(ch)
+        if raw == 0:
+            return -1
+        if raw < 1300:
+            return 0
+        elif raw < 1700:
+            return 1
+        else:
+            return 2
+
     def stop(self):
         """Stop background threads and close connection."""
         self._running = False
@@ -178,14 +193,28 @@ if __name__ == "__main__":
         print("Failed to start RC input")
         sys.exit(1)
 
+    POS_NAMES = ["UP", "MID", "DN"]
+
     print("Reading RC channels... Ctrl+C to stop\n")
+    print("Sticks (CH1-4)                          Switches (CH5-10)")
+    print("-" * 72)
     try:
         while True:
-            line_parts = []
-            for ch in range(1, 11):
+            # Sticks
+            sticks = []
+            for ch in range(1, 5):
                 raw = rc.get_channel(ch)
-                line_parts.append(f"CH{ch:2d}:{raw:4d}")
-            print("  ".join(line_parts), end="\r")
+                sticks.append(f"CH{ch}:{raw:4d}")
+
+            # Switches with position labels
+            switches = []
+            for ch in range(5, 11):
+                raw = rc.get_channel(ch)
+                pos = rc.get_switch_3way(ch)
+                label = POS_NAMES[pos] if 0 <= pos <= 2 else "???"
+                switches.append(f"CH{ch}:{raw:4d}[{label}]")
+
+            print("  ".join(sticks) + "  |  " + "  ".join(switches), end="\r")
             time.sleep(0.1)
     except KeyboardInterrupt:
         print("\nStopping...")

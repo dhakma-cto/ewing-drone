@@ -140,6 +140,13 @@ def main():
     max_recovery_frames = rec_cfg["max_recovery_frames"]
     cmd_str = ""
 
+    # RC switch channels and edge detection
+    ch_mode = rc_cfg.get("ch_mode", 9)    # SE — Manual/AI
+    ch_state = rc_cfg.get("ch_state", 8)  # SD — state transitions
+    prev_mode_pos = -1   # -1 = not yet read (suppress startup trigger)
+    prev_state_pos = -1
+    ai_mode = False
+
     # --- Start modules ---
     print("[main] Starting STRIKER EDGE AI PoC...")
     camera.start()
@@ -169,18 +176,82 @@ def main():
                 state = IDLE
                 tracker.reset()
                 servo.reset()
+                roi_selector.deactivate()
                 current_bbox = None
                 current_confidence = 0.0
                 recovery_frames = 0
                 cmd_str = ""
                 print("[main] Reset to IDLE")
 
+            # --- RC switch handling (edge-triggered) ---
+            if rc.connected:
+                mode_pos = rc.get_switch_3way(ch_mode)
+                state_pos = rc.get_switch_3way(ch_state)
+
+                # First read — store positions, don't act
+                if prev_mode_pos == -1:
+                    prev_mode_pos = mode_pos
+                    prev_state_pos = state_pos
+                    ai_mode = (mode_pos == 2)
+                    if ai_mode:
+                        print("[main] Started in AI mode")
+                    else:
+                        print("[main] Started in MANUAL mode")
+
+                # Mode switch: down=AI, up/mid=Manual
+                if mode_pos != prev_mode_pos:
+                    if mode_pos == 2 and not ai_mode:
+                        ai_mode = True
+                        print("[main] >>> AI MODE ENABLED")
+                    elif mode_pos != 2 and ai_mode:
+                        ai_mode = False
+                        # Immediate override — kill everything
+                        state = IDLE
+                        tracker.reset()
+                        servo.reset()
+                        roi_selector.deactivate()
+                        current_bbox = None
+                        current_confidence = 0.0
+                        recovery_frames = 0
+                        cmd_str = ""
+                        print("[main] >>> MANUAL MODE — AI disengaged")
+                    prev_mode_pos = mode_pos
+
+                # State switch (only in AI mode, edge-triggered)
+                if ai_mode and state_pos != prev_state_pos:
+                    # Up → Mid: Select target
+                    if prev_state_pos == 0 and state_pos == 1:
+                        if state == IDLE:
+                            roi_selector.activate()
+                            state = TARGET_SELECT
+                            print("[main] [SD] Select target")
+                    # Mid → Down: Arm or Execute
+                    elif prev_state_pos == 1 and state_pos == 2:
+                        if state == TRACKING:
+                            state = STRIKE_ARMED
+                            print("[main] [SD] STRIKE ARMED")
+                        elif state == STRIKE_ARMED:
+                            state = TERMINAL
+                            print("[main] [SD] STRIKE EXECUTE → TERMINAL")
+                    # Any → Up: Reset
+                    elif state_pos == 0:
+                        state = IDLE
+                        tracker.reset()
+                        servo.reset()
+                        roi_selector.deactivate()
+                        current_bbox = None
+                        current_confidence = 0.0
+                        recovery_frames = 0
+                        cmd_str = ""
+                        print("[main] [SD] Reset to IDLE")
+                    prev_state_pos = state_pos
+
             # --- State machine ---
             if state == IDLE:
                 if key == ord('s'):
                     roi_selector.activate()
                     state = TARGET_SELECT
-                    print("[main] ROI selection started (WASD/sticks to move, Enter/switch to confirm)")
+                    print("[main] ROI selection started")
 
             elif state == TARGET_SELECT:
                 roi_selector.update_rc(rc)
