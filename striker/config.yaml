@@ -61,8 +61,7 @@ rc_input:
   ch_move_y: 3        # right stick UD
   ch_size_w: 1        # left stick LR → width
   ch_size_h: 4        # left stick UD → height (throttle, absolute)
-  ch_confirm: 10      # SC switch (ROI confirm)
-  ch_mode: 5          # SE switch (left, top) — up/mid=Manual, down=AI
+  ch_mode: 5          # AI/Manual mode switch
   ch_state: 7         # SG switch (right, top) — state transitions (edge-triggered)
   stick_deadband: 50
   cursor_speed: 8.0   # px/frame at full deflection

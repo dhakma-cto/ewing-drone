@@ -27,7 +27,6 @@ class ROISelector:
         self.ch_move_y = cfg.get("ch_move_y", 2)
         self.ch_size_w = cfg.get("ch_size_w", 4)
         self.ch_size_h = cfg.get("ch_size_h", 3)
-        self.ch_confirm = cfg.get("ch_confirm", 10)
         self.stick_deadband = cfg.get("stick_deadband", 50)
         self.cursor_speed = cfg.get("cursor_speed", 8.0)
         self.size_speed = cfg.get("size_speed", 3.0)
@@ -61,9 +60,7 @@ class ROISelector:
         self.confirmed = False
         self.cancelled = False
         self.bbox = None
-        # cx/cy set on first draw() from actual frame size
         self._needs_center = True
-        print(f"[roi] Activated — waiting for frame to center cursor")
 
     def deactivate(self):
         self.active = False
@@ -94,10 +91,6 @@ class ROISelector:
             self.roi_h += dh * self.size_speed
 
         self._clamp()
-
-        # Confirm — switch
-        if rc.get_switch(self.ch_confirm):
-            self._confirm()
 
     def update_keyboard(self, key):
         """Update cursor from keyboard input. key is from cv2.waitKey() & 0xFF."""
