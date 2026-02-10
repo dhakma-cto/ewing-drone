@@ -65,8 +65,9 @@ rc_input:
   stick_deadband: 50
   cursor_speed: 8.0   # px/frame at full deflection
   size_speed: 3.0
-  throttle_is_size_h: true
-  default_roi_w: 80
-  default_roi_h: 80
+  throttle_is_size_h: false
+  invert_size_w: true
+  default_roi_w: 120
+  default_roi_h: 120
   min_roi_size: 15
-  max_roi_size: 400
+  max_roi_size: 800

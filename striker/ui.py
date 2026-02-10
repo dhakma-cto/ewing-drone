@@ -31,9 +31,10 @@ class ROISelector:
         self.stick_deadband = cfg.get("stick_deadband", 50)
         self.cursor_speed = cfg.get("cursor_speed", 8.0)
         self.size_speed = cfg.get("size_speed", 3.0)
-        self.throttle_is_size_h = cfg.get("throttle_is_size_h", True)
+        self.throttle_is_size_h = cfg.get("throttle_is_size_h", False)
+        self.invert_size_w = cfg.get("invert_size_w", False)
         self.min_roi = cfg.get("min_roi_size", 15)
-        self.max_roi = cfg.get("max_roi_size", 400)
+        self.max_roi = cfg.get("max_roi_size", 800)
         self.default_w = float(cfg.get("default_roi_w", 120))
         self.default_h = float(cfg.get("default_roi_h", 120))
 
@@ -80,6 +81,8 @@ class ROISelector:
 
         # Size — left stick horizontal = width
         dw = rc.get_stick_normalized(self.ch_size_w, self.stick_deadband)
+        if self.invert_size_w:
+            dw = -dw
         self.roi_w += dw * self.size_speed
 
         # Size — throttle = height (absolute mapping)
