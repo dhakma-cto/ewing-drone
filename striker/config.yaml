@@ -57,10 +57,10 @@ rc_input:
   port: "/dev/serial0"
   baud: 57600
   rate_hz: 10
-  ch_move_x: 1        # right stick LR
-  ch_move_y: 2        # right stick UD
-  ch_size_w: 4        # left stick LR → width
-  ch_size_h: 3        # left stick UD → height (throttle, absolute)
+  ch_move_x: 2        # right stick LR
+  ch_move_y: 3        # right stick UD
+  ch_size_w: 1        # left stick LR → width
+  ch_size_h: 4        # left stick UD → height (throttle, absolute)
   ch_confirm: 10      # SC switch
   stick_deadband: 50
   cursor_speed: 8.0   # px/frame at full deflection
