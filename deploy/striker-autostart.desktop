@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=STRIKER EDGE AI
+Exec=bash -c "sleep 3 && /usr/bin/python3 /home/tritium/TerminalAI_Pi/striker/main.py >> /home/tritium/striker.log 2>&1"
+Hidden=false
+X-GNOME-Autostart-enabled=true

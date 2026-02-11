@@ -27,19 +27,26 @@ class CameraStream:
         self._try_connect()
 
     def _try_connect(self):
-        """Attempt to open the camera. Sets self._cam on success."""
-        try:
-            cam = Picamera2(self.camera_index)
-            config = cam.create_video_configuration(
-                main={"size": (self.width, self.height), "format": "BGR888"},
-                buffer_count=4,
-            )
-            cam.configure(config)
-            cam.start()
-            self._cam = cam
-            print(f"[camera] Connected (camera {self.camera_index})")
-        except (IndexError, RuntimeError) as e:
-            self._cam = None
+        """Attempt to open the camera. Tries configured index, then the other slot."""
+        for idx in [self.camera_index, 1 - self.camera_index]:
+            try:
+                cam = Picamera2(idx)
+                config = cam.create_video_configuration(
+                    main={"size": (self.width, self.height), "format": "BGR888"},
+                    buffer_count=4,
+                )
+                cam.configure(config)
+                cam.start()
+                self._cam = cam
+                self.camera_index = idx
+                print(f"[camera] Connected (camera {idx})")
+                return
+            except (IndexError, RuntimeError, OSError):
+                try:
+                    cam.close()
+                except Exception:
+                    pass
+        self._cam = None
 
     def read(self):
         """Return a BGR numpy array frame, or None on failure."""

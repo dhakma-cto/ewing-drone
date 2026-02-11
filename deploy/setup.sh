@@ -99,12 +99,19 @@ pip3 install --break-system-packages -q -r "$REPO_DIR/requirements.txt" 2>/dev/n
     echo "  WARNING: pip install failed — run manually: pip3 install -r requirements.txt"
 echo "  Dependencies checked"
 
-# --- 5. Systemd service ---
-echo "[5/6] Installing striker service..."
+# --- 5. Autostart (GUI) + systemd (fallback) ---
+echo "[5/6] Installing autostart + service..."
+# Autostart desktop entry — runs in graphical session, reliable fullscreen
+AUTOSTART_DIR="/home/$USER/.config/autostart"
+mkdir -p "$AUTOSTART_DIR"
+cp "$REPO_DIR/deploy/striker-autostart.desktop" "$AUTOSTART_DIR/striker.desktop"
+chown -R "$USER:$USER" "$AUTOSTART_DIR"
+echo "  Autostart entry installed"
+# Systemd as fallback
 cp "$REPO_DIR/deploy/striker.service" /etc/systemd/system/striker.service
 systemctl daemon-reload
-systemctl enable striker.service
-echo "  Service installed and enabled"
+systemctl disable striker.service 2>/dev/null  # disable systemd, autostart handles it
+echo "  Systemd service installed (disabled, autostart preferred)"
 
 # --- 6. Permissions ---
 echo "[6/6] Setting permissions..."
